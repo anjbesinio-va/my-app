@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Save, Palette } from 'lucide-react';
 
 const TaskManager = () => {
@@ -6,7 +6,10 @@ const TaskManager = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [editText, setEditText] = useState('');
   
-  const [teamTasks, setTeamTasks] = useState({
+  const getInitialTeamTasks = () => {
+    const saved = localStorage.getItem('cpd_team_tasks');
+    if (saved) return JSON.parse(saved);
+    return {
     Jake: [
       { id: 1, task: 'Pour', status: '' },
       { id: 2, task: 'Seal', status: '' },
@@ -60,14 +63,35 @@ const TaskManager = () => {
         { id: 1603, task: 'Update Line Sheet', status: '', highlight: true }
       ]
     }
-  });
+    };
+  };
 
-  const [masterTodoCategories, setMasterTodoCategories] = useState({
-    'Priority Today': { color: 'yellow' },
-    'Priority This Week': { color: 'yellow' },
-    'Future': { color: 'yellow' },
-    'Other Brain Dump': { color: 'yellow' }
-  });
+  const getInitialMasterTodo = () => {
+    const saved = localStorage.getItem('cpd_master_todo');
+    if (saved) return JSON.parse(saved);
+    return {
+      'Priority Today': { color: 'yellow' },
+      'Priority This Week': { color: 'yellow' },
+      'Future': { color: 'yellow' },
+      'Other Brain Dump': { color: 'yellow' }
+    };
+  };
+
+  const [teamTasks, setTeamTasks] = useState(getInitialTeamTasks);
+  const [categories, setCategories] = useState(getInitialCategories);
+  const [masterTodoCategories, setMasterTodoCategories] = useState(getInitialMasterTodo);
+
+  useEffect(() => {
+    localStorage.setItem('cpd_team_tasks', JSON.stringify(teamTasks));
+  }, [teamTasks]);
+
+  useEffect(() => {
+    localStorage.setItem('cpd_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('cpd_master_todo', JSON.stringify(masterTodoCategories));
+  }, [masterTodoCategories]);
 
   const statuses = ['', 'Priority Today', 'Priority This Week', 'Future', 'Completed'];
   const availableColors = ['blue', 'red', 'green', 'purple', 'yellow', 'pink', 'indigo', 'orange'];
