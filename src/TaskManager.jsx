@@ -8,67 +8,77 @@ const TaskManager = () => {
   
   const getInitialTeamTasks = () => {
     const saved = localStorage.getItem('cpd_team_tasks');
-    if (saved) return JSON.parse(saved);
-    return {
-    Jake: [
-      { id: 1, task: 'Pour', status: '' },
-      { id: 2, task: 'Seal', status: '' },
-      { id: 3, task: 'Pack Gift Sets', status: '' },
-      { id: 4, task: 'Load Bins', status: '' }
-    ],
-    Ang: [
-      { id: 5, task: 'Upload market schedule', status: 'Priority Today' },
-      { id: 6, task: 'Sales Analysis BFCM 24', status: 'Priority Today' },
-      { id: 7, task: 'Alibaba for Glo project', status: '' },
-      { id: 8, task: 'October numbers update', status: 'Priority Today' },
-      { id: 9, task: 'LinkedIn lead gen', status: '' }
-    ],
-    Jordan: [
-      { id: 18, task: 'Discount Code IG', status: 'Priority Today' },
-      { id: 19, task: 'Finalize Calendar', status: '' }
-    ],
-    Bren: [
-      { id: 30, task: 'Cricut projects', status: '' },
-      { id: 31, task: 'Make gift boxes', status: '' }
-    ]
-  });
-
-  const [categories, setCategories] = useState({
-    'Check-Ins': {
-      color: 'blue',
-      tasks: [
-        { id: 500, task: 'Horseshoe Market', status: '' },
-        { id: 501, task: 'GLO', status: '' },
-        { id: 503, task: 'Boulder Premium Space Program', status: 'Priority Today' }
-      ]
-    },
-    'Payments To Make': {
-      color: 'blue',
-      tasks: [
-        { id: 600, task: 'Mile High Payment $575', status: '' },
-        { id: 608, task: 'GumPop 3 $375', status: 'Priority Today' }
-      ]
-    },
-    'Black Friday Actions': {
-      color: 'red',
-      tasks: [
-        { id: 700, task: 'Edit photos', status: '' },
-        { id: 701, task: 'Launch Faire promo', status: '' }
-      ]
-    },
-    'Corporate Gifting': {
-      color: 'purple',
-      tasks: [
-        { id: 1600, task: 'Continue outreach', status: '' },
-        { id: 1603, task: 'Update Line Sheet', status: '', highlight: true }
-      ]
+    if (saved) {
+      return JSON.parse(saved);
     }
+    return {
+      Jake: [
+        { id: 1, task: 'Pour', status: '' },
+        { id: 2, task: 'Seal', status: '' },
+        { id: 3, task: 'Pack Gift Sets', status: '' },
+        { id: 4, task: 'Load Bins', status: '' }
+      ],
+      Ang: [
+        { id: 5, task: 'Upload market schedule', status: 'Priority Today' },
+        { id: 6, task: 'Sales Analysis BFCM 24', status: 'Priority Today' },
+        { id: 7, task: 'Alibaba for Glo project', status: '' },
+        { id: 8, task: 'October numbers update', status: 'Priority Today' },
+        { id: 9, task: 'LinkedIn lead gen', status: '' }
+      ],
+      Jordan: [
+        { id: 18, task: 'Discount Code IG', status: 'Priority Today' },
+        { id: 19, task: 'Finalize Calendar', status: '' }
+      ],
+      Bren: [
+        { id: 30, task: 'Cricut projects', status: '' },
+        { id: 31, task: 'Make gift boxes', status: '' }
+      ]
+    };
+  };
+
+  const getInitialCategories = () => {
+    const saved = localStorage.getItem('cpd_categories');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      'Check-Ins': {
+        color: 'blue',
+        tasks: [
+          { id: 500, task: 'Horseshoe Market', status: '' },
+          { id: 501, task: 'GLO', status: '' },
+          { id: 503, task: 'Boulder Premium Space Program', status: 'Priority Today' }
+        ]
+      },
+      'Payments To Make': {
+        color: 'blue',
+        tasks: [
+          { id: 600, task: 'Mile High Payment $575', status: '' },
+          { id: 608, task: 'GumPop 3 $375', status: 'Priority Today' }
+        ]
+      },
+      'Black Friday Actions': {
+        color: 'red',
+        tasks: [
+          { id: 700, task: 'Edit photos', status: '' },
+          { id: 701, task: 'Launch Faire promo', status: '' }
+        ]
+      },
+      'Corporate Gifting': {
+        color: 'purple',
+        tasks: [
+          { id: 1600, task: 'Continue outreach', status: '' },
+          { id: 1603, task: 'Update Line Sheet', status: '', highlight: true }
+        ]
+      }
     };
   };
 
   const getInitialMasterTodo = () => {
     const saved = localStorage.getItem('cpd_master_todo');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      return JSON.parse(saved);
+    }
     return {
       'Priority Today': { color: 'yellow' },
       'Priority This Week': { color: 'yellow' },
