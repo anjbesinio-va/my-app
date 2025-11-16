@@ -9,14 +9,15 @@
   ],
   "main": "src/index.tsx",
   "dependencies": {
+    "autoprefixer": "10.4.21",
+    "firebase": "^12.6.0",
     "loader-utils": "3.2.1",
+    "lucide-react": "0.553.0",
+    "postcss": "8.5.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-scripts": "5.0.1",
-    "lucide-react": "0.553.0",
-    "tailwindcss": "4.1.17",
-    "postcss": "8.5.6",
-    "autoprefixer": "10.4.21"
+    "tailwindcss": "4.1.17"
   },
   "devDependencies": {
     "@types/react": "18.2.38",
