@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit2, Save } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Palette } from 'lucide-react';
 
 const TaskManager = () => {
   const [activeSection, setActiveSection] = useState('team');
@@ -62,14 +62,26 @@ const TaskManager = () => {
     }
   });
 
+  const [masterTodoCategories, setMasterTodoCategories] = useState({
+    'Priority Today': { color: 'yellow' },
+    'Priority This Week': { color: 'yellow' },
+    'Future': { color: 'yellow' },
+    'Other Brain Dump': { color: 'yellow' }
+  });
+
   const statuses = ['', 'Priority Today', 'Priority This Week', 'Future', 'Completed'];
+  const availableColors = ['blue', 'red', 'green', 'purple', 'yellow', 'pink', 'indigo', 'orange'];
 
   const getCategoryColor = (color) => {
     const colors = {
       blue: 'bg-blue-100 border-blue-400',
       red: 'bg-red-100 border-red-400',
       green: 'bg-green-100 border-green-400',
-      purple: 'bg-purple-100 border-purple-400'
+      purple: 'bg-purple-100 border-purple-400',
+      yellow: 'bg-yellow-100 border-yellow-400',
+      pink: 'bg-pink-100 border-pink-400',
+      indigo: 'bg-indigo-100 border-indigo-400',
+      orange: 'bg-orange-100 border-orange-400'
     };
     return colors[color] || 'bg-gray-100 border-gray-400';
   };
@@ -79,7 +91,11 @@ const TaskManager = () => {
       blue: 'bg-blue-600 text-white',
       red: 'bg-red-600 text-white',
       green: 'bg-green-600 text-white',
-      purple: 'bg-purple-600 text-white'
+      purple: 'bg-purple-600 text-white',
+      yellow: 'bg-yellow-300 text-gray-900',
+      pink: 'bg-pink-600 text-white',
+      indigo: 'bg-indigo-600 text-white',
+      orange: 'bg-orange-600 text-white'
     };
     return colors[color] || 'bg-gray-600 text-white';
   };
@@ -109,12 +125,16 @@ const TaskManager = () => {
       });
     });
 
-    return {
-      'Priority Today': allTasks.filter(t => t.status === 'Priority Today'),
-      'Priority This Week': allTasks.filter(t => t.status === 'Priority This Week'),
-      'Future': allTasks.filter(t => t.status === 'Future'),
-      'Other Brain Dump': allTasks.filter(t => t.status === '' || t.status === 'Completed')
-    };
+    const result = {};
+    Object.keys(masterTodoCategories).forEach(category => {
+      if (category === 'Other Brain Dump') {
+        result[category] = allTasks.filter(t => t.status === '' || t.status === 'Completed');
+      } else {
+        result[category] = allTasks.filter(t => t.status === category);
+      }
+    });
+    
+    return result;
   };
 
   const updateTeamTaskStatus = (member, taskId, newStatus) => {
@@ -138,6 +158,44 @@ const TaskManager = () => {
     });
   };
 
+  const addTeamMember = () => {
+    const newMember = prompt('Enter new team member name:');
+    if (newMember && !teamTasks[newMember]) {
+      setTeamTasks({
+        ...teamTasks,
+        [newMember]: []
+      });
+    }
+  };
+
+  const renameTeamMember = (oldName) => {
+    const newName = prompt('Rename team member:', oldName);
+    if (newName && newName !== oldName && !teamTasks[newName]) {
+      const tasks = teamTasks[oldName];
+      const newTeamTasks = {};
+      Object.keys(teamTasks).forEach(key => {
+        if (key === oldName) {
+          newTeamTasks[newName] = tasks;
+        } else {
+          newTeamTasks[key] = teamTasks[key];
+        }
+      });
+      setTeamTasks(newTeamTasks);
+    }
+  };
+
+  const deleteTeamMember = (member) => {
+    if (window.confirm(`Delete team member "${member}" and all their tasks?`)) {
+      const newTeamTasks = {};
+      Object.keys(teamTasks).forEach(key => {
+        if (key !== member) {
+          newTeamTasks[key] = teamTasks[key];
+        }
+      });
+      setTeamTasks(newTeamTasks);
+    }
+  };
+
   const addTeamTask = (member) => {
     const newTask = prompt(`Add new task for ${member}:`);
     if (newTask) {
@@ -156,6 +214,58 @@ const TaskManager = () => {
         ...teamTasks,
         [member]: teamTasks[member].filter(task => task.id !== taskId)
       });
+    }
+  };
+
+  const addNewCategory = () => {
+    const categoryName = prompt('Enter new category name:');
+    if (categoryName && !categories[categoryName]) {
+      const color = prompt(`Choose color (${availableColors.join(', ')}):`, 'blue');
+      setCategories({
+        ...categories,
+        [categoryName]: { color: color || 'blue', tasks: [] }
+      });
+    }
+  };
+
+  const renameCategory = (oldName) => {
+    const newName = prompt('Rename category:', oldName);
+    if (newName && newName !== oldName && !categories[newName]) {
+      const categoryData = categories[oldName];
+      const newCategories = {};
+      Object.keys(categories).forEach(key => {
+        if (key === oldName) {
+          newCategories[newName] = categoryData;
+        } else {
+          newCategories[key] = categories[key];
+        }
+      });
+      setCategories(newCategories);
+    }
+  };
+
+  const changeCategoryColor = (categoryName) => {
+    const newColor = prompt(`Choose color for "${categoryName}" (${availableColors.join(', ')}):`, categories[categoryName].color);
+    if (newColor && availableColors.includes(newColor)) {
+      setCategories({
+        ...categories,
+        [categoryName]: {
+          ...categories[categoryName],
+          color: newColor
+        }
+      });
+    }
+  };
+
+  const deleteCategory = (category) => {
+    if (window.confirm(`Delete category "${category}" and all its tasks?`)) {
+      const newCategories = {};
+      Object.keys(categories).forEach(key => {
+        if (key !== category) {
+          newCategories[key] = categories[key];
+        }
+      });
+      setCategories(newCategories);
     }
   };
 
@@ -183,6 +293,61 @@ const TaskManager = () => {
           tasks: categories[category].tasks.filter(task => task.id !== taskId)
         }
       });
+    }
+  };
+
+  const addMasterTodoCategory = () => {
+    const categoryName = prompt('Enter new Master To-Do category name:');
+    if (categoryName && !masterTodoCategories[categoryName]) {
+      const color = prompt(`Choose color (${availableColors.join(', ')}):`, 'yellow');
+      setMasterTodoCategories({
+        ...masterTodoCategories,
+        [categoryName]: { color: color || 'yellow' }
+      });
+      if (!statuses.includes(categoryName) && categoryName !== 'Other Brain Dump') {
+        statuses.push(categoryName);
+      }
+    }
+  };
+
+  const renameMasterTodoCategory = (oldName) => {
+    const newName = prompt('Rename Master To-Do category:', oldName);
+    if (newName && newName !== oldName && !masterTodoCategories[newName]) {
+      const categoryData = masterTodoCategories[oldName];
+      const newMasterCategories = {};
+      Object.keys(masterTodoCategories).forEach(key => {
+        if (key === oldName) {
+          newMasterCategories[newName] = categoryData;
+        } else {
+          newMasterCategories[key] = masterTodoCategories[key];
+        }
+      });
+      setMasterTodoCategories(newMasterCategories);
+    }
+  };
+
+  const changeMasterTodoCategoryColor = (categoryName) => {
+    const newColor = prompt(`Choose color for "${categoryName}" (${availableColors.join(', ')}):`, masterTodoCategories[categoryName].color);
+    if (newColor && availableColors.includes(newColor)) {
+      setMasterTodoCategories({
+        ...masterTodoCategories,
+        [categoryName]: {
+          ...masterTodoCategories[categoryName],
+          color: newColor
+        }
+      });
+    }
+  };
+
+  const deleteMasterTodoCategory = (category) => {
+    if (window.confirm(`Delete Master To-Do category "${category}"?`)) {
+      const newMasterCategories = {};
+      Object.keys(masterTodoCategories).forEach(key => {
+        if (key !== category) {
+          newMasterCategories[key] = masterTodoCategories[key];
+        }
+      });
+      setMasterTodoCategories(newMasterCategories);
     }
   };
 
@@ -265,160 +430,212 @@ const TaskManager = () => {
       </div>
 
       {activeSection === 'team' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Object.entries(teamTasks).map(([member, tasks]) => (
-            <div key={member} className="bg-white border-2 border-gray-900">
-              <div className="bg-yellow-300 px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center">
-                <span></span>
-                <span>{member}</span>
-                <button onClick={() => addTeamTask(member)} className="hover:text-gray-600">
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="p-3 space-y-2">
-                {tasks.map(task => (
-                  <div key={task.id}>
-                    {isEditing('team', member, task.id) ? (
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="flex-grow text-xs border border-gray-300 px-2 py-1"
-                          autoFocus
-                        />
-                        <button onClick={saveEdit} className="px-2 bg-green-500 text-white rounded">
-                          <Save className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-1 group">
-                        <select
-                          value={task.status}
-                          onChange={(e) => updateTeamTaskStatus(member, task.id, e.target.value)}
-                          className={`text-xs px-2 py-1 rounded ${getStatusColor(task.status)} font-semibold`}
-                        >
-                          {statuses.map(status => (
-                            <option key={status} value={status}>
-                              {status || 'None'}
-                            </option>
-                          ))}
-                        </select>
-                        <span className={`flex-grow text-xs ${task.status === 'Completed' ? 'line-through text-gray-500' : ''}`}>
-                          {task.task}
-                        </span>
-                        <button
-                          onClick={() => startEdit('team', member, task.id, task.task)}
-                          className="opacity-0 group-hover:opacity-100"
-                        >
-                          <Edit2 className="w-3 h-3 text-gray-600" />
-                        </button>
-                        <button
-                          onClick={() => deleteTeamTask(member, task.id)}
-                          className="opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-500" />
-                        </button>
-                      </div>
-                    )}
+        <div>
+          <button
+            onClick={addTeamMember}
+            className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Team Member
+          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(teamTasks).map(([member, tasks]) => (
+              <div key={member} className="bg-white border-2 border-gray-900">
+                <div className="bg-yellow-300 px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center">
+                  <button onClick={() => renameTeamMember(member)} className="hover:text-gray-600" title="Rename">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <span>{member}</span>
+                  <div className="flex gap-1">
+                    <button onClick={() => addTeamTask(member)} className="hover:text-gray-600" title="Add Task">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => deleteTeamMember(member)} className="hover:text-red-600" title="Delete Member">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                ))}
+                </div>
+                <div className="p-3 space-y-2">
+                  {tasks.map(task => (
+                    <div key={task.id}>
+                      {isEditing('team', member, task.id) ? (
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="flex-grow text-xs border border-gray-300 px-2 py-1"
+                            autoFocus
+                          />
+                          <button onClick={saveEdit} className="px-2 bg-green-500 text-white rounded">
+                            <Save className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-1 group">
+                          <select
+                            value={task.status}
+                            onChange={(e) => updateTeamTaskStatus(member, task.id, e.target.value)}
+                            className={`text-xs px-2 py-1 rounded ${getStatusColor(task.status)} font-semibold`}
+                          >
+                            {statuses.map(status => (
+                              <option key={status} value={status}>
+                                {status || 'None'}
+                              </option>
+                            ))}
+                          </select>
+                          <span className={`flex-grow text-xs ${task.status === 'Completed' ? 'line-through text-gray-500' : ''}`}>
+                            {task.task}
+                          </span>
+                          <button
+                            onClick={() => startEdit('team', member, task.id, task.task)}
+                            className="opacity-0 group-hover:opacity-100"
+                          >
+                            <Edit2 className="w-3 h-3 text-gray-600" />
+                          </button>
+                          <button
+                            onClick={() => deleteTeamTask(member, task.id)}
+                            className="opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
       {activeSection === 'master' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Object.entries(getMasterTodoTasks()).map(([priority, tasks]) => (
-            <div key={priority} className="bg-white border-2 border-gray-900">
-              <div className="bg-yellow-300 px-4 py-2 border-b-2 border-gray-900 font-bold text-center">
-                {priority} ({tasks.length})
-              </div>
-              <div className="p-3 space-y-2">
-                {tasks.length === 0 ? (
-                  <p className="text-gray-400 text-xs italic">No tasks</p>
-                ) : (
-                  tasks.map((task, idx) => (
-                    <div key={`${task.source}-${task.id}-${idx}`} className="text-xs">
-                      <div className={`font-semibold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                        {task.task}
+        <div>
+          <button
+            onClick={addMasterTodoCategory}
+            className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Master To-Do Category
+          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(getMasterTodoTasks()).map(([priority, tasks]) => (
+              <div key={priority} className="bg-white border-2 border-gray-900">
+                <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center ${getCategoryHeaderColor(masterTodoCategories[priority]?.color || 'yellow')}`}>
+                  <button onClick={() => renameMasterTodoCategory(priority)} className="hover:opacity-70" title="Rename">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                  <span className="flex-grow">{priority} ({tasks.length})</span>
+                  <div className="flex gap-1">
+                    <button onClick={() => changeMasterTodoCategoryColor(priority)} className="hover:opacity-70" title="Change Color">
+                      <Palette className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => deleteMasterTodoCategory(priority)} className="hover:opacity-70" title="Delete Category">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-3 space-y-2">
+                  {tasks.length === 0 ? (
+                    <p className="text-gray-400 text-xs italic">No tasks</p>
+                  ) : (
+                    tasks.map((task, idx) => (
+                      <div key={`${task.source}-${task.id}-${idx}`} className="text-xs">
+                        <div className={`font-semibold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                          {task.task}
+                        </div>
+                        <div className="text-gray-500 italic text-[10px]">
+                          {task.source}
+                        </div>
                       </div>
-                      <div className="text-gray-500 italic text-[10px]">
-                        {task.source}
-                      </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
       {activeSection === 'categories' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Object.entries(categories).map(([category, data]) => (
-            <div key={category} className={`border-2 ${getCategoryColor(data.color)}`}>
-              <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center text-xs ${getCategoryHeaderColor(data.color)} flex justify-between items-center`}>
-                <span></span>
-                <span className="flex-grow">{category}</span>
-                <button onClick={() => addCategoryTask(category)} className="hover:opacity-70">
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="p-3 space-y-2 bg-white">
-                {data.tasks.map(task => (
-                  <div key={task.id}>
-                    {isEditing('category', category, task.id) ? (
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="flex-grow text-xs border border-gray-300 px-2 py-1"
-                          autoFocus
-                        />
-                        <button onClick={saveEdit} className="px-2 bg-green-500 text-white rounded">
-                          <Save className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className={`flex items-start gap-1 group ${task.highlight ? 'bg-yellow-200 px-1' : ''}`}>
-                        <select
-                          value={task.status}
-                          onChange={(e) => updateCategoryTaskStatus(category, task.id, e.target.value)}
-                          className={`text-xs px-2 py-1 rounded ${getStatusColor(task.status)} font-semibold flex-shrink-0`}
-                        >
-                          {statuses.map(status => (
-                            <option key={status} value={status}>
-                              {status || 'None'}
-                            </option>
-                          ))}
-                        </select>
-                        <span className={`flex-grow text-xs ${task.status === 'Completed' ? 'line-through text-gray-500' : ''}`}>
-                          {task.task}
-                        </span>
-                        <button
-                          onClick={() => startEdit('category', category, task.id, task.task)}
-                          className="opacity-0 group-hover:opacity-100 flex-shrink-0"
-                        >
-                          <Edit2 className="w-3 h-3 text-gray-600" />
-                        </button>
-                        <button
-                          onClick={() => deleteCategoryTask(category, task.id)}
-                          className="opacity-0 group-hover:opacity-100 flex-shrink-0"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-500" />
-                        </button>
-                      </div>
-                    )}
+        <div>
+          <button
+            onClick={addNewCategory}
+            className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add New Category
+          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(categories).map(([category, data]) => (
+              <div key={category} className={`border-2 ${getCategoryColor(data.color)}`}>
+                <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center text-xs ${getCategoryHeaderColor(data.color)} flex justify-between items-center`}>
+                  <button onClick={() => renameCategory(category)} className="hover:opacity-70" title="Rename">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                  <span className="flex-grow">{category}</span>
+                  <div className="flex gap-1">
+                    <button onClick={() => changeCategoryColor(category)} className="hover:opacity-70" title="Change Color">
+                      <Palette className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => addCategoryTask(category)} className="hover:opacity-70" title="Add Task">
+                      <Plus className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => deleteCategory(category)} className="hover:opacity-70 text-red-200" title="Delete Category">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
-                ))}
+                </div>
+                <div className="p-3 space-y-2 bg-white">
+                  {data.tasks.map(task => (
+                    <div key={task.id}>
+                      {isEditing('category', category, task.id) ? (
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="flex-grow text-xs border border-gray-300 px-2 py-1"
+                            autoFocus
+                          />
+                          <button onClick={saveEdit} className="px-2 bg-green-500 text-white rounded">
+                            <Save className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className={`flex items-start gap-1 group ${task.highlight ? 'bg-yellow-200 px-1' : ''}`}>
+                          <select
+                            value={task.status}
+                            onChange={(e) => updateCategoryTaskStatus(category, task.id, e.target.value)}
+                            className={`text-xs px-2 py-1 rounded ${getStatusColor(task.status)} font-semibold flex-shrink-0`}
+                          >
+                            {statuses.map(status => (
+                              <option key={status} value={status}>
+                                {status || 'None'}
+                              </option>
+                            ))}
+                          </select>
+                          <span className={`flex-grow text-xs ${task.status === 'Completed' ? 'line-through text-gray-500' : ''}`}>
+                            {task.task}
+                          </span>
+                          <button
+                            onClick={() => startEdit('category', category, task.id, task.task)}
+                            className="opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          >
+                            <Edit2 className="w-3 h-3 text-gray-600" />
+                          </button>
+                          <button
+                            onClick={() => deleteCategoryTask(category, task.id)}
+                            className="opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
