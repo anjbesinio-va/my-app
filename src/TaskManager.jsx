@@ -75,7 +75,7 @@ const TaskManager = () => {
       'Priority Today': { color: 'yellow' },
       'Priority This Week': { color: 'yellow' },
       'Future': { color: 'yellow' },
-      'Other Brain Dump': { color: 'yellow' }
+      'Uncategorized': { color: 'yellow' }
     };
   };
 
@@ -214,7 +214,7 @@ const TaskManager = () => {
 
     const result = {};
     Object.keys(masterTodoCategories).forEach(category => {
-      if (category === 'Other Brain Dump') {
+      if (category === 'Uncategorized') {
         result[category] = allTasks.filter(t => t.status === '' || t.status === 'Completed');
       } else {
         result[category] = allTasks.filter(t => t.status === category);
@@ -415,7 +415,7 @@ const TaskManager = () => {
       };
       setMasterTodoCategories(updatedMasterTodo);
       saveToFirebase(teamTasks, categories, updatedMasterTodo);
-      if (!statuses.includes(categoryName) && categoryName !== 'Other Brain Dump') {
+      if (!statuses.includes(categoryName) && categoryName !== 'Uncategorized') {
         statuses.push(categoryName);
       }
     }
@@ -454,7 +454,7 @@ const TaskManager = () => {
   };
 
   const addBrainDumpTask = () => {
-  const newTask = prompt('Add new task to Other Brain Dump:');
+  const newTask = prompt('Add new task to Uncategorized:');
   if (newTask) {
     // Add to the first team member, or create a "Miscellaneous" category
     const allIds = [
@@ -689,7 +689,7 @@ const TaskManager = () => {
   </button>
   <span className="flex-grow">{priority} ({tasks.length})</span>
   <div className="flex gap-1">
-    {priority === 'Other Brain Dump' && (
+    {priority === 'Uncategorized' && (
       <button onClick={addBrainDumpTask} className="hover:opacity-70" title="Add Task">
         <Plus className="w-3 h-3" />
       </button>
@@ -702,7 +702,7 @@ const TaskManager = () => {
     </button>
   </div>
 </div>
-          <div className="p-3 space-y-2">
+          <div className={`p-3 space-y-2 ${priority === 'Uncategorized' ? 'max-h-96 overflow-y-auto' : ''}`}>
             {tasks.length === 0 ? (
               <p className="text-gray-400 text-xs italic">No tasks</p>
             ) : (
@@ -716,7 +716,7 @@ const TaskManager = () => {
                       {task.source}
                     </div>
                   </div>
-                  {priority === 'Other Brain Dump' && (
+                  {priority === 'Uncategorized' && (
                     <button
                       onClick={() => {
                         if (task.source.startsWith('Team: ')) {
