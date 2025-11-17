@@ -46,13 +46,6 @@ const TaskManager = () => {
           { id: 503, task: 'Boulder Premium Space Program', status: 'Priority Today' }
         ]
       },
-      'Payments To Make': {
-        color: 'blue',
-        tasks: [
-          { id: 600, task: 'Mile High Payment $575', status: '' },
-          { id: 608, task: 'GumPop 3 $375', status: 'Priority Today' }
-        ]
-      },
       'Black Friday Actions': {
         color: 'red',
         tasks: [
@@ -70,6 +63,18 @@ const TaskManager = () => {
     };
   };
 
+  const getInitialPaymentCategories = () => {
+    return {
+      'Payments To Make': {
+        color: 'blue',
+        payments: [
+          { id: 600, task: 'Mile High Payment', amount: 575, status: '' },
+          { id: 608, task: 'GumPop 3', amount: 375, status: 'Priority Today' }
+        ]
+      }
+    };
+  };
+
   const getInitialMasterTodo = () => {
     return {
       'Priority Today': { color: 'yellow' },
@@ -81,6 +86,7 @@ const TaskManager = () => {
 
   const [teamTasks, setTeamTasks] = useState(getInitialTeamTasks);
   const [categories, setCategories] = useState(getInitialCategories);
+  const [paymentCategories, setPaymentCategories] = useState(getInitialPaymentCategories);
   const [masterTodoCategories, setMasterTodoCategories] = useState(getInitialMasterTodo);
 
   // Firebase: Load data on mount and set up real-time listener
@@ -94,21 +100,24 @@ const TaskManager = () => {
           const data = docSnap.data();
           setTeamTasks(data.teamTasks);
           setCategories(data.categories);
+          setPaymentCategories(data.paymentCategories || getInitialPaymentCategories());
           setMasterTodoCategories(data.masterTodoCategories);
         } else {
-          // ONLY runs the very first time - initializes Firebase with default data
           const initialTeamTasks = getInitialTeamTasks();
           const initialCategories = getInitialCategories();
+          const initialPaymentCategories = getInitialPaymentCategories();
           const initialMasterTodo = getInitialMasterTodo();
           
           await setDoc(docRef, {
             teamTasks: initialTeamTasks,
             categories: initialCategories,
+            paymentCategories: initialPaymentCategories,
             masterTodoCategories: initialMasterTodo
           });
           
           setTeamTasks(initialTeamTasks);
           setCategories(initialCategories);
+          setPaymentCategories(initialPaymentCategories);
           setMasterTodoCategories(initialMasterTodo);
         }
         setLoading(false);
@@ -120,14 +129,13 @@ const TaskManager = () => {
 
     loadFromFirebase();
 
-    // Set up real-time listener for real-time syncing across devices
     const docRef = doc(db, 'cpdTasks', 'mainData');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      // Only update from listener if WE are not currently saving
       if (!isSavingRef.current && docSnap.exists()) {
         const data = docSnap.data();
         setTeamTasks(data.teamTasks);
         setCategories(data.categories);
+        setPaymentCategories(data.paymentCategories || {});
         setMasterTodoCategories(data.masterTodoCategories);
       }
     });
@@ -135,21 +143,20 @@ const TaskManager = () => {
     return () => unsubscribe();
   }, []);
 
-  // Firebase: Save to Firestore whenever state changes
-  const saveToFirebase = async (updatedTeamTasks, updatedCategories, updatedMasterTodo) => {
+  const saveToFirebase = async (updatedTeamTasks, updatedCategories, updatedPaymentCategories, updatedMasterTodo) => {
     isSavingRef.current = true;
     try {
       const docRef = doc(db, 'cpdTasks', 'mainData');
       await setDoc(docRef, {
         teamTasks: updatedTeamTasks,
         categories: updatedCategories,
+        paymentCategories: updatedPaymentCategories,
         masterTodoCategories: updatedMasterTodo
       });
       console.log('Saved to Firebase successfully');
     } catch (error) {
       console.error('Error saving to Firebase:', error);
     } finally {
-      // Wait a bit before allowing listener updates again
       setTimeout(() => {
         isSavingRef.current = false;
       }, 500);
@@ -212,6 +219,12 @@ const TaskManager = () => {
       });
     });
 
+    Object.entries(paymentCategories).forEach(([category, data]) => {
+      data.payments.forEach(payment => {
+        allTasks.push({ ...payment, task: payment.task, source: category });
+      });
+    });
+
     const result = {};
     Object.keys(masterTodoCategories).forEach(category => {
       if (category === 'Uncategorized') {
@@ -232,7 +245,7 @@ const TaskManager = () => {
       )
     };
     setTeamTasks(updatedTeamTasks);
-    saveToFirebase(updatedTeamTasks, categories, masterTodoCategories);
+    saveToFirebase(updatedTeamTasks, categories, paymentCategories, masterTodoCategories);
   };
 
   const updateCategoryTaskStatus = (category, taskId, newStatus) => {
@@ -246,7 +259,21 @@ const TaskManager = () => {
       }
     };
     setCategories(updatedCategories);
-    saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+    saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+  };
+
+  const updatePaymentCategoryStatus = (category, paymentId, newStatus) => {
+    const updatedPaymentCategories = {
+      ...paymentCategories,
+      [category]: {
+        ...paymentCategories[category],
+        payments: paymentCategories[category].payments.map(payment =>
+          payment.id === paymentId ? { ...payment, status: newStatus } : payment
+        )
+      }
+    };
+    setPaymentCategories(updatedPaymentCategories);
+    saveToFirebase(teamTasks, categories, updatedPaymentCategories, masterTodoCategories);
   };
 
   const addTeamMember = () => {
@@ -257,7 +284,7 @@ const TaskManager = () => {
         [newMember]: []
       };
       setTeamTasks(updatedTeamTasks);
-      saveToFirebase(updatedTeamTasks, categories, masterTodoCategories);
+      saveToFirebase(updatedTeamTasks, categories, paymentCategories, masterTodoCategories);
     }
   };
 
@@ -274,7 +301,7 @@ const TaskManager = () => {
         }
       });
       setTeamTasks(newTeamTasks);
-      saveToFirebase(newTeamTasks, categories, masterTodoCategories);
+      saveToFirebase(newTeamTasks, categories, paymentCategories, masterTodoCategories);
     }
   };
 
@@ -287,7 +314,7 @@ const TaskManager = () => {
         }
       });
       setTeamTasks(newTeamTasks);
-      saveToFirebase(newTeamTasks, categories, masterTodoCategories);
+      saveToFirebase(newTeamTasks, categories, paymentCategories, masterTodoCategories);
     }
   };
 
@@ -301,7 +328,7 @@ const TaskManager = () => {
         [member]: [...teamTasks[member], { id: newId, task: newTask, status: '' }]
       };
       setTeamTasks(updatedTeamTasks);
-      saveToFirebase(updatedTeamTasks, categories, masterTodoCategories);
+      saveToFirebase(updatedTeamTasks, categories, paymentCategories, masterTodoCategories);
     }
   };
 
@@ -312,7 +339,7 @@ const TaskManager = () => {
         [member]: teamTasks[member].filter(task => task.id !== taskId)
       };
       setTeamTasks(updatedTeamTasks);
-      saveToFirebase(updatedTeamTasks, categories, masterTodoCategories);
+      saveToFirebase(updatedTeamTasks, categories, paymentCategories, masterTodoCategories);
     }
   };
 
@@ -325,7 +352,20 @@ const TaskManager = () => {
         [categoryName]: { color: color || 'blue', tasks: [] }
       };
       setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+    }
+  };
+
+  const addNewPaymentCategory = () => {
+    const categoryName = prompt('Enter new payment category name:');
+    if (categoryName && !paymentCategories[categoryName]) {
+      const color = prompt(`Choose color (${availableColors.join(', ')}):`, 'blue');
+      const updatedPaymentCategories = {
+        ...paymentCategories,
+        [categoryName]: { color: color || 'blue', payments: [] }
+      };
+      setPaymentCategories(updatedPaymentCategories);
+      saveToFirebase(teamTasks, categories, updatedPaymentCategories, masterTodoCategories);
     }
   };
 
@@ -342,7 +382,24 @@ const TaskManager = () => {
         }
       });
       setCategories(newCategories);
-      saveToFirebase(teamTasks, newCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, newCategories, paymentCategories, masterTodoCategories);
+    }
+  };
+
+  const renamePaymentCategory = (oldName) => {
+    const newName = prompt('Rename payment category:', oldName);
+    if (newName && newName !== oldName && !paymentCategories[newName]) {
+      const categoryData = paymentCategories[oldName];
+      const newPaymentCategories = {};
+      Object.keys(paymentCategories).forEach(key => {
+        if (key === oldName) {
+          newPaymentCategories[newName] = categoryData;
+        } else {
+          newPaymentCategories[key] = paymentCategories[key];
+        }
+      });
+      setPaymentCategories(newPaymentCategories);
+      saveToFirebase(teamTasks, categories, newPaymentCategories, masterTodoCategories);
     }
   };
 
@@ -357,7 +414,22 @@ const TaskManager = () => {
         }
       };
       setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+    }
+  };
+
+  const changePaymentCategoryColor = (categoryName) => {
+    const newColor = prompt(`Choose color for "${categoryName}" (${availableColors.join(', ')}):`, paymentCategories[categoryName].color);
+    if (newColor && availableColors.includes(newColor)) {
+      const updatedPaymentCategories = {
+        ...paymentCategories,
+        [categoryName]: {
+          ...paymentCategories[categoryName],
+          color: newColor
+        }
+      };
+      setPaymentCategories(updatedPaymentCategories);
+      saveToFirebase(teamTasks, categories, updatedPaymentCategories, masterTodoCategories);
     }
   };
 
@@ -370,7 +442,20 @@ const TaskManager = () => {
         }
       });
       setCategories(newCategories);
-      saveToFirebase(teamTasks, newCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, newCategories, paymentCategories, masterTodoCategories);
+    }
+  };
+
+  const deletePaymentCategory = (category) => {
+    if (window.confirm(`Delete payment category "${category}" and all its payments?`)) {
+      const newPaymentCategories = {};
+      Object.keys(paymentCategories).forEach(key => {
+        if (key !== category) {
+          newPaymentCategories[key] = paymentCategories[key];
+        }
+      });
+      setPaymentCategories(newPaymentCategories);
+      saveToFirebase(teamTasks, categories, newPaymentCategories, masterTodoCategories);
     }
   };
 
@@ -387,7 +472,27 @@ const TaskManager = () => {
         }
       };
       setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+    }
+  };
+
+  const addPaymentCategoryPayment = (category) => {
+    const newPayment = prompt(`Add payment name to ${category}:`);
+    if (newPayment) {
+      const newAmount = prompt('Enter amount:');
+      if (newAmount && !isNaN(parseFloat(newAmount))) {
+        const allIds = Object.values(paymentCategories).flatMap(cat => cat.payments.map(p => p.id));
+        const newId = Math.max(...allIds, 0) + 1;
+        const updatedPaymentCategories = {
+          ...paymentCategories,
+          [category]: {
+            ...paymentCategories[category],
+            payments: [...paymentCategories[category].payments, { id: newId, task: newPayment, amount: parseFloat(newAmount), status: '' }]
+          }
+        };
+        setPaymentCategories(updatedPaymentCategories);
+        saveToFirebase(teamTasks, categories, updatedPaymentCategories, masterTodoCategories);
+      }
     }
   };
 
@@ -401,7 +506,21 @@ const TaskManager = () => {
         }
       };
       setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+    }
+  };
+
+  const deletePaymentCategoryPayment = (category, paymentId) => {
+    if (window.confirm('Delete this payment?')) {
+      const updatedPaymentCategories = {
+        ...paymentCategories,
+        [category]: {
+          ...paymentCategories[category],
+          payments: paymentCategories[category].payments.filter(payment => payment.id !== paymentId)
+        }
+      };
+      setPaymentCategories(updatedPaymentCategories);
+      saveToFirebase(teamTasks, categories, updatedPaymentCategories, masterTodoCategories);
     }
   };
 
@@ -414,7 +533,7 @@ const TaskManager = () => {
         [categoryName]: { color: color || 'yellow' }
       };
       setMasterTodoCategories(updatedMasterTodo);
-      saveToFirebase(teamTasks, categories, updatedMasterTodo);
+      saveToFirebase(teamTasks, categories, paymentCategories, updatedMasterTodo);
       if (!statuses.includes(categoryName) && categoryName !== 'Uncategorized') {
         statuses.push(categoryName);
       }
@@ -434,7 +553,7 @@ const TaskManager = () => {
         }
       });
       setMasterTodoCategories(newMasterCategories);
-      saveToFirebase(teamTasks, categories, newMasterCategories);
+      saveToFirebase(teamTasks, categories, paymentCategories, newMasterCategories);
     }
   };
 
@@ -449,45 +568,42 @@ const TaskManager = () => {
         }
       };
       setMasterTodoCategories(updatedMasterTodo);
-      saveToFirebase(teamTasks, categories, updatedMasterTodo);
+      saveToFirebase(teamTasks, categories, paymentCategories, updatedMasterTodo);
     }
   };
 
   const addBrainDumpTask = () => {
-  const newTask = prompt('Add new task to Uncategorized:');
-  if (newTask) {
-    // Add to the first team member, or create a "Miscellaneous" category
-    const allIds = [
-      ...Object.values(teamTasks).flat().map(t => t.id),
-      ...Object.values(categories).flatMap(cat => cat.tasks.map(t => t.id))
-    ];
-    const newId = Math.max(...allIds, 0) + 1;
-    
-    // Check if "Miscellaneous" category exists, if not create it
-    if (!categories['Miscellaneous']) {
-      const updatedCategories = {
-        ...categories,
-        'Miscellaneous': {
-          color: 'gray',
-          tasks: [{ id: newId, task: newTask, status: '' }]
-        }
-      };
-      setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
-    } else {
-      // Add to existing Miscellaneous category
-      const updatedCategories = {
-        ...categories,
-        'Miscellaneous': {
-          ...categories['Miscellaneous'],
-          tasks: [...categories['Miscellaneous'].tasks, { id: newId, task: newTask, status: '' }]
-        }
-      };
-      setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+    const newTask = prompt('Add new task to Uncategorized:');
+    if (newTask) {
+      const allIds = [
+        ...Object.values(teamTasks).flat().map(t => t.id),
+        ...Object.values(categories).flatMap(cat => cat.tasks.map(t => t.id))
+      ];
+      const newId = Math.max(...allIds, 0) + 1;
+      
+      if (!categories['Miscellaneous']) {
+        const updatedCategories = {
+          ...categories,
+          'Miscellaneous': {
+            color: 'gray',
+            tasks: [{ id: newId, task: newTask, status: '' }]
+          }
+        };
+        setCategories(updatedCategories);
+        saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+      } else {
+        const updatedCategories = {
+          ...categories,
+          'Miscellaneous': {
+            ...categories['Miscellaneous'],
+            tasks: [...categories['Miscellaneous'].tasks, { id: newId, task: newTask, status: '' }]
+          }
+        };
+        setCategories(updatedCategories);
+        saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
+      }
     }
-  }
-};
+  };
 
   const deleteMasterTodoCategory = (category) => {
     if (window.confirm(`Delete Master To-Do category "${category}"?`)) {
@@ -498,7 +614,7 @@ const TaskManager = () => {
         }
       });
       setMasterTodoCategories(newMasterCategories);
-      saveToFirebase(teamTasks, categories, newMasterCategories);
+      saveToFirebase(teamTasks, categories, paymentCategories, newMasterCategories);
     }
   };
 
@@ -518,7 +634,7 @@ const TaskManager = () => {
         )
       };
       setTeamTasks(updatedTeamTasks);
-      saveToFirebase(updatedTeamTasks, categories, masterTodoCategories);
+      saveToFirebase(updatedTeamTasks, categories, paymentCategories, masterTodoCategories);
     } else if (editingItem.type === 'category') {
       const updatedCategories = {
         ...categories,
@@ -530,7 +646,7 @@ const TaskManager = () => {
         }
       };
       setCategories(updatedCategories);
-      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+      saveToFirebase(teamTasks, updatedCategories, paymentCategories, masterTodoCategories);
     }
 
     setEditingItem(null);
@@ -673,83 +789,92 @@ const TaskManager = () => {
       )}
 
       {activeSection === 'master' && (
-  <div>
-    <button
-      onClick={addMasterTodoCategory}
-      className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
-    >
-      <Plus className="w-4 h-4" /> Add Master To-Do Category
-    </button>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {Object.entries(getMasterTodoTasks()).map(([priority, tasks]) => (
-        <div key={priority} className="bg-white border-2 border-gray-900">
-          <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center ${getCategoryHeaderColor(masterTodoCategories[priority]?.color || 'yellow')}`}>
-  <button onClick={() => renameMasterTodoCategory(priority)} className="hover:opacity-70" title="Rename">
-    <Edit2 className="w-3 h-3" />
-  </button>
-  <span className="flex-grow">{priority} ({tasks.length})</span>
-  <div className="flex gap-1">
-    {priority === 'Uncategorized' && (
-      <button onClick={addBrainDumpTask} className="hover:opacity-70" title="Add Task">
-        <Plus className="w-3 h-3" />
-      </button>
-    )}
-    <button onClick={() => changeMasterTodoCategoryColor(priority)} className="hover:opacity-70" title="Change Color">
-      <Palette className="w-3 h-3" />
-    </button>
-    <button onClick={() => deleteMasterTodoCategory(priority)} className="hover:opacity-70" title="Delete Category">
-      <Trash2 className="w-3 h-3" />
-    </button>
-  </div>
-</div>
-          <div className={`p-3 space-y-2 ${priority === 'Uncategorized' ? 'max-h-96 overflow-y-auto' : ''}`}>
-            {tasks.length === 0 ? (
-              <p className="text-gray-400 text-xs italic">No tasks</p>
-            ) : (
-              tasks.map((task, idx) => (
-                <div key={`${task.source}-${task.id}-${idx}`} className="text-xs group flex items-start gap-1">
-                  <div className="flex-grow">
-                    <div className={`font-semibold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                      {task.task}
-                    </div>
-                    <div className="text-gray-500 italic text-[10px]">
-                      {task.source}
-                    </div>
-                  </div>
-                  {priority === 'Uncategorized' && (
-                    <button
-                      onClick={() => {
-                        if (task.source.startsWith('Team: ')) {
-                          const member = task.source.replace('Team: ', '');
-                          deleteTeamTask(member, task.id);
-                        } else {
-                          deleteCategoryTask(task.source, task.id);
-                        }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 flex-shrink-0"
-                      title="Delete task"
-                    >
-                      <Trash2 className="w-3 h-3 text-red-500" />
+        <div>
+          <button
+            onClick={addMasterTodoCategory}
+            className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Master To-Do Category
+          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(getMasterTodoTasks()).map(([priority, tasks]) => (
+              <div key={priority} className="bg-white border-2 border-gray-900">
+                <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center ${getCategoryHeaderColor(masterTodoCategories[priority]?.color || 'yellow')}`}>
+                  <button onClick={() => renameMasterTodoCategory(priority)} className="hover:opacity-70" title="Rename">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                  <span className="flex-grow">{priority} ({tasks.length})</span>
+                  <div className="flex gap-1">
+                    {priority === 'Uncategorized' && (
+                      <button onClick={addBrainDumpTask} className="hover:opacity-70" title="Add Task">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    )}
+                    <button onClick={() => changeMasterTodoCategoryColor(priority)} className="hover:opacity-70" title="Change Color">
+                      <Palette className="w-3 h-3" />
                     </button>
+                    <button onClick={() => deleteMasterTodoCategory(priority)} className="hover:opacity-70" title="Delete Category">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <div className={`p-3 space-y-2 ${priority === 'Uncategorized' ? 'max-h-96 overflow-y-auto' : ''}`}>
+                  {tasks.length === 0 ? (
+                    <p className="text-gray-400 text-xs italic">No tasks</p>
+                  ) : (
+                    tasks.map((task, idx) => (
+                      <div key={`${task.source}-${task.id}-${idx}`} className="text-xs group flex items-start gap-1">
+                        <div className="flex-grow">
+                          <div className={`font-semibold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                            {task.task}
+                          </div>
+                          <div className="text-gray-500 italic text-[10px]">
+                            {task.source}
+                          </div>
+                        </div>
+                        {priority === 'Uncategorized' && (
+                          <button
+                            onClick={() => {
+                              if (task.source.startsWith('Team: ')) {
+                                const member = task.source.replace('Team: ', '');
+                                deleteTeamTask(member, task.id);
+                              } else {
+                                deleteCategoryTask(task.source, task.id);
+                              }
+                            }}
+                            className="opacity-0 group-hover:opacity-100 flex-shrink-0"
+                            title="Delete task"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
-  </div>
-)}
+      )}
 
       {activeSection === 'categories' && (
         <div>
-          <button
-            onClick={addNewCategory}
-            className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Add New Category
-          </button>
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={addNewCategory}
+              className="px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Add New Category
+            </button>
+            <button
+              onClick={addNewPaymentCategory}
+              className="px-4 py-2 bg-green-300 border-2 border-gray-900 font-bold hover:bg-green-400 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Add Payment Category
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.entries(categories).map(([category, data]) => (
               <div key={category} className={`border-2 ${getCategoryColor(data.color)}`}>
@@ -761,8 +886,7 @@ const TaskManager = () => {
                   <div className="flex gap-1">
                     <button onClick={() => changeCategoryColor(category)} className="hover:opacity-70" title="Change Color">
                       <Palette className="w-3 h-3" />
-                      </button>
-
+                    </button>
                     <button onClick={() => addCategoryTask(category)} className="hover:opacity-70" title="Add Task">
                       <Plus className="w-3 h-3" />
                     </button>
@@ -822,6 +946,72 @@ const TaskManager = () => {
                 </div>
               </div>
             ))}
+
+            {Object.entries(paymentCategories).map(([category, data]) => {
+              const total = data.payments.reduce((sum, payment) => sum + payment.amount, 0);
+              return (
+                <div key={category} className={`border-2 ${getCategoryColor(data.color)}`}>
+                  <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center text-xs ${getCategoryHeaderColor(data.color)} flex justify-between items-center`}>
+                    <button onClick={() => renamePaymentCategory(category)} className="hover:opacity-70" title="Rename">
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                    <span className="flex-grow">{category}</span>
+                    <div className="flex gap-1">
+                      <button onClick={() => changePaymentCategoryColor(category)} className="hover:opacity-70" title="Change Color">
+                        <Palette className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => addPaymentCategoryPayment(category)} className="hover:opacity-70" title="Add Payment">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => deletePaymentCategory(category)} className="hover:opacity-70 text-red-200" title="Delete Category">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-3 space-y-2 bg-white">
+                    {data.payments.map(payment => (
+                      <div key={payment.id}>
+                        <div className="flex items-start gap-1 group justify-between">
+                          <div className="flex-grow">
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={payment.status}
+                                onChange={(e) => updatePaymentCategoryStatus(category, payment.id, e.target.value)}
+                                className={`text-xs px-2 py-1 rounded ${getStatusColor(payment.status)} font-semibold`}
+                              >
+                                {statuses.map(status => (
+                                  <option key={status} value={status}>
+                                    {status || 'None'}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className={`text-xs font-semibold ${payment.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                                {payment.task}
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-gray-800 ml-20">
+                              ${payment.amount.toFixed(2)}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deletePaymentCategoryPayment(category, payment.id)}
+                            className="opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="border-t-2 border-gray-300 pt-2 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-gray-900">TOTAL:</span>
+                        <span className="text-sm font-bold text-gray-900">${total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -830,3 +1020,4 @@ const TaskManager = () => {
 };
 
 export default TaskManager;
+              
