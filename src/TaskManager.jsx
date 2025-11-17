@@ -215,7 +215,7 @@ const TaskManager = () => {
     const result = {};
     Object.keys(masterTodoCategories).forEach(category => {
       if (category === 'Uncategorized') {
-        result[category] = allTasks.filter(t => t.status === '' || t.status === 'Completed');
+        result[category] = allTasks.filter(t => t.status === '');
       } else {
         result[category] = allTasks.filter(t => t.status === category);
       }
