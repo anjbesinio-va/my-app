@@ -701,8 +701,9 @@ const TaskManager = () => {
                   <span className="flex-grow">{category}</span>
                   <div className="flex gap-1">
                     <button onClick={() => changeCategoryColor(category)} className="hover:opacity-70" title="Change Color">
-                      <Palette className="w-3 h-3>
+                      <Palette className="w-3 h-3" />
                       </button>
+
                     <button onClick={() => addCategoryTask(category)} className="hover:opacity-70" title="Add Task">
                       <Plus className="w-3 h-3" />
                     </button>
