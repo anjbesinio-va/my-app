@@ -84,7 +84,10 @@ const TaskManager = () => {
 
   // Firebase: Load data on mount and set up real-time listener
   // Firebase: Load data on mount and set up real-time listener
+  // Firebase: Load data on mount and set up real-time listener
   useEffect(() => {
+    let isInitialLoad = true;
+    
     const loadFromFirebase = async () => {
       try {
         const docRef = doc(db, 'cpdTasks', 'mainData');
@@ -112,9 +115,11 @@ const TaskManager = () => {
           setMasterTodoCategories(initialMasterTodo);
         }
         setLoading(false);
+        isInitialLoad = false;
       } catch (error) {
         console.error('Error loading from Firebase:', error);
         setLoading(false);
+        isInitialLoad = false;
       }
     };
 
@@ -123,7 +128,8 @@ const TaskManager = () => {
     // Set up real-time listener for real-time syncing across devices
     const docRef = doc(db, 'cpdTasks', 'mainData');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
+      // Only update from listener after initial load is complete
+      if (!isInitialLoad && docSnap.exists()) {
         const data = docSnap.data();
         setTeamTasks(data.teamTasks);
         setCategories(data.categories);
@@ -133,7 +139,6 @@ const TaskManager = () => {
 
     return () => unsubscribe();
   }, []);
-
   // Firebase: Save to Firestore whenever state changes
   const saveToFirebase = async (updatedTeamTasks, updatedCategories, updatedMasterTodo) => {
     try {
