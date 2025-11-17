@@ -453,6 +453,42 @@ const TaskManager = () => {
     }
   };
 
+  const addBrainDumpTask = () => {
+  const newTask = prompt('Add new task to Other Brain Dump:');
+  if (newTask) {
+    // Add to the first team member, or create a "Miscellaneous" category
+    const allIds = [
+      ...Object.values(teamTasks).flat().map(t => t.id),
+      ...Object.values(categories).flatMap(cat => cat.tasks.map(t => t.id))
+    ];
+    const newId = Math.max(...allIds, 0) + 1;
+    
+    // Check if "Miscellaneous" category exists, if not create it
+    if (!categories['Miscellaneous']) {
+      const updatedCategories = {
+        ...categories,
+        'Miscellaneous': {
+          color: 'gray',
+          tasks: [{ id: newId, task: newTask, status: '' }]
+        }
+      };
+      setCategories(updatedCategories);
+      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+    } else {
+      // Add to existing Miscellaneous category
+      const updatedCategories = {
+        ...categories,
+        'Miscellaneous': {
+          ...categories['Miscellaneous'],
+          tasks: [...categories['Miscellaneous'].tasks, { id: newId, task: newTask, status: '' }]
+        }
+      };
+      setCategories(updatedCategories);
+      saveToFirebase(teamTasks, updatedCategories, masterTodoCategories);
+    }
+  }
+};
+
   const deleteMasterTodoCategory = (category) => {
     if (window.confirm(`Delete Master To-Do category "${category}"?`)) {
       const newMasterCategories = {};
@@ -637,51 +673,74 @@ const TaskManager = () => {
       )}
 
       {activeSection === 'master' && (
-        <div>
-          <button
-            onClick={addMasterTodoCategory}
-            className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Add Master To-Do Category
-          </button>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(getMasterTodoTasks()).map(([priority, tasks]) => (
-              <div key={priority} className="bg-white border-2 border-gray-900">
-                <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center ${getCategoryHeaderColor(masterTodoCategories[priority]?.color || 'yellow')}`}>
-                  <button onClick={() => renameMasterTodoCategory(priority)} className="hover:opacity-70" title="Rename">
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  <span className="flex-grow">{priority} ({tasks.length})</span>
-                  <div className="flex gap-1">
-                    <button onClick={() => changeMasterTodoCategoryColor(priority)} className="hover:opacity-70" title="Change Color">
-                      <Palette className="w-3 h-3" />
-                    </button>
-                    <button onClick={() => deleteMasterTodoCategory(priority)} className="hover:opacity-70" title="Delete Category">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+  <div>
+    <button
+      onClick={addMasterTodoCategory}
+      className="mb-4 px-4 py-2 bg-yellow-300 border-2 border-gray-900 font-bold hover:bg-yellow-400 flex items-center gap-2"
+    >
+      <Plus className="w-4 h-4" /> Add Master To-Do Category
+    </button>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Object.entries(getMasterTodoTasks()).map(([priority, tasks]) => (
+        <div key={priority} className="bg-white border-2 border-gray-900">
+          <div className={`px-4 py-2 border-b-2 border-gray-900 font-bold text-center flex justify-between items-center ${getCategoryHeaderColor(masterTodoCategories[priority]?.color || 'yellow')}`}>
+  <button onClick={() => renameMasterTodoCategory(priority)} className="hover:opacity-70" title="Rename">
+    <Edit2 className="w-3 h-3" />
+  </button>
+  <span className="flex-grow">{priority} ({tasks.length})</span>
+  <div className="flex gap-1">
+    {priority === 'Other Brain Dump' && (
+      <button onClick={addBrainDumpTask} className="hover:opacity-70" title="Add Task">
+        <Plus className="w-3 h-3" />
+      </button>
+    )}
+    <button onClick={() => changeMasterTodoCategoryColor(priority)} className="hover:opacity-70" title="Change Color">
+      <Palette className="w-3 h-3" />
+    </button>
+    <button onClick={() => deleteMasterTodoCategory(priority)} className="hover:opacity-70" title="Delete Category">
+      <Trash2 className="w-3 h-3" />
+    </button>
+  </div>
+</div>
+          <div className="p-3 space-y-2">
+            {tasks.length === 0 ? (
+              <p className="text-gray-400 text-xs italic">No tasks</p>
+            ) : (
+              tasks.map((task, idx) => (
+                <div key={`${task.source}-${task.id}-${idx}`} className="text-xs group flex items-start gap-1">
+                  <div className="flex-grow">
+                    <div className={`font-semibold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                      {task.task}
+                    </div>
+                    <div className="text-gray-500 italic text-[10px]">
+                      {task.source}
+                    </div>
                   </div>
-                </div>
-                <div className="p-3 space-y-2">
-                  {tasks.length === 0 ? (
-                    <p className="text-gray-400 text-xs italic">No tasks</p>
-                  ) : (
-                    tasks.map((task, idx) => (
-                      <div key={`${task.source}-${task.id}-${idx}`} className="text-xs">
-                        <div className={`font-semibold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                          {task.task}
-                        </div>
-                        <div className="text-gray-500 italic text-[10px]">
-                          {task.source}
-                        </div>
-                      </div>
-                    ))
+                  {priority === 'Other Brain Dump' && (
+                    <button
+                      onClick={() => {
+                        if (task.source.startsWith('Team: ')) {
+                          const member = task.source.replace('Team: ', '');
+                          deleteTeamTask(member, task.id);
+                        } else {
+                          deleteCategoryTask(task.source, task.id);
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 flex-shrink-0"
+                      title="Delete task"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </button>
                   )}
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
-      )}
+      ))}
+    </div>
+  </div>
+)}
 
       {activeSection === 'categories' && (
         <div>
