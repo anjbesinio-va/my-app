@@ -83,6 +83,7 @@ const TaskManager = () => {
   const [masterTodoCategories, setMasterTodoCategories] = useState(getInitialMasterTodo);
 
   // Firebase: Load data on mount and set up real-time listener
+  // Firebase: Load data on mount and set up real-time listener
   useEffect(() => {
     const loadFromFirebase = async () => {
       try {
@@ -91,16 +92,24 @@ const TaskManager = () => {
         
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setTeamTasks(data.teamTasks || getInitialTeamTasks());
-          setCategories(data.categories || getInitialCategories());
-          setMasterTodoCategories(data.masterTodoCategories || getInitialMasterTodo());
+          setTeamTasks(data.teamTasks);
+          setCategories(data.categories);
+          setMasterTodoCategories(data.masterTodoCategories);
         } else {
-          // Initialize Firebase with default data
+          // ONLY runs the very first time - initializes Firebase with default data
+          const initialTeamTasks = getInitialTeamTasks();
+          const initialCategories = getInitialCategories();
+          const initialMasterTodo = getInitialMasterTodo();
+          
           await setDoc(docRef, {
-            teamTasks: getInitialTeamTasks(),
-            categories: getInitialCategories(),
-            masterTodoCategories: getInitialMasterTodo()
+            teamTasks: initialTeamTasks,
+            categories: initialCategories,
+            masterTodoCategories: initialMasterTodo
           });
+          
+          setTeamTasks(initialTeamTasks);
+          setCategories(initialCategories);
+          setMasterTodoCategories(initialMasterTodo);
         }
         setLoading(false);
       } catch (error) {
@@ -111,14 +120,14 @@ const TaskManager = () => {
 
     loadFromFirebase();
 
-    // Set up real-time listener
+    // Set up real-time listener for real-time syncing across devices
     const docRef = doc(db, 'cpdTasks', 'mainData');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setTeamTasks(data.teamTasks || getInitialTeamTasks());
-        setCategories(data.categories || getInitialCategories());
-        setMasterTodoCategories(data.masterTodoCategories || getInitialMasterTodo());
+        setTeamTasks(data.teamTasks);
+        setCategories(data.categories);
+        setMasterTodoCategories(data.masterTodoCategories);
       }
     });
 
