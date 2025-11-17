@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit2, Save, Palette } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -8,6 +8,7 @@ const TaskManager = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [editText, setEditText] = useState('');
   const [loading, setLoading] = useState(true);
+  const isSavingRef = useRef(false);
   
   const getInitialTeamTasks = () => {
     return {
@@ -83,11 +84,7 @@ const TaskManager = () => {
   const [masterTodoCategories, setMasterTodoCategories] = useState(getInitialMasterTodo);
 
   // Firebase: Load data on mount and set up real-time listener
-  // Firebase: Load data on mount and set up real-time listener
-  // Firebase: Load data on mount and set up real-time listener
   useEffect(() => {
-    let isInitialLoad = true;
-    
     const loadFromFirebase = async () => {
       try {
         const docRef = doc(db, 'cpdTasks', 'mainData');
@@ -115,11 +112,9 @@ const TaskManager = () => {
           setMasterTodoCategories(initialMasterTodo);
         }
         setLoading(false);
-        isInitialLoad = false;
       } catch (error) {
         console.error('Error loading from Firebase:', error);
         setLoading(false);
-        isInitialLoad = false;
       }
     };
 
@@ -128,8 +123,8 @@ const TaskManager = () => {
     // Set up real-time listener for real-time syncing across devices
     const docRef = doc(db, 'cpdTasks', 'mainData');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      // Only update from listener after initial load is complete
-      if (!isInitialLoad && docSnap.exists()) {
+      // Only update from listener if WE are not currently saving
+      if (!isSavingRef.current && docSnap.exists()) {
         const data = docSnap.data();
         setTeamTasks(data.teamTasks);
         setCategories(data.categories);
@@ -139,8 +134,10 @@ const TaskManager = () => {
 
     return () => unsubscribe();
   }, []);
+
   // Firebase: Save to Firestore whenever state changes
   const saveToFirebase = async (updatedTeamTasks, updatedCategories, updatedMasterTodo) => {
+    isSavingRef.current = true;
     try {
       const docRef = doc(db, 'cpdTasks', 'mainData');
       await setDoc(docRef, {
@@ -148,8 +145,14 @@ const TaskManager = () => {
         categories: updatedCategories,
         masterTodoCategories: updatedMasterTodo
       });
+      console.log('Saved to Firebase successfully');
     } catch (error) {
       console.error('Error saving to Firebase:', error);
+    } finally {
+      // Wait a bit before allowing listener updates again
+      setTimeout(() => {
+        isSavingRef.current = false;
+      }, 500);
     }
   };
 
@@ -311,7 +314,9 @@ const TaskManager = () => {
       setTeamTasks(updatedTeamTasks);
       saveToFirebase(updatedTeamTasks, categories, masterTodoCategories);
     }
-  };const addNewCategory = () => {
+  };
+
+  const addNewCategory = () => {
     const categoryName = prompt('Enter new category name:');
     if (categoryName && !categories[categoryName]) {
       const color = prompt(`Choose color (${availableColors.join(', ')}):`, 'blue');
@@ -696,8 +701,8 @@ const TaskManager = () => {
                   <span className="flex-grow">{category}</span>
                   <div className="flex gap-1">
                     <button onClick={() => changeCategoryColor(category)} className="hover:opacity-70" title="Change Color">
-                      <Palette className="w-3 h-3" />
-                    </button>
+                      <Palette className="w-3 h-3>
+                      </button>
                     <button onClick={() => addCategoryTask(category)} className="hover:opacity-70" title="Add Task">
                       <Plus className="w-3 h-3" />
                     </button>
